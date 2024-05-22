@@ -93,10 +93,7 @@ pub struct GdDynMut<'a, T: GodotClass, D: ?Sized> {
 }
 
 impl<'a, T: GodotClass, D: ?Sized> GdDynMut<'a, T, D> {
-    pub(crate) fn from_guard(
-        guard: MutGuard<'a, T>,
-        dynamic_caster: fn(&mut T) -> &mut D,
-    ) -> Self {
+    pub(crate) fn from_guard(mut    guard: MutGuard<'a, T>, dynamic_caster: fn(&mut T) -> &mut D) -> Self {
         let obj = &mut *guard;
         let dyn_obj = dynamic_caster(obj);
 
@@ -112,14 +109,14 @@ impl<T: GodotClass, D: ?Sized> Deref for GdDynMut<'_, T, D> {
 
     fn deref(&self) -> &D {
         // SAFETY: pointer refers to object that is pinned while guard is alive.
-        unsafe { self.cached_ptr.read() }
+        unsafe { &*self.cached_ptr }
     }
 }
 
 impl<T: GodotClass, D: ?Sized> DerefMut for GdDynMut<'_, T, D> {
     fn deref_mut(&mut self) -> &mut D {
         // SAFETY: pointer refers to object that is pinned while guard is alive.
-        unsafe { self.cached_ptr.read() }
+        unsafe { &mut *self.cached_ptr }
     }
 }
 

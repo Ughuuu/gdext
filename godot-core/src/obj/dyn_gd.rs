@@ -5,13 +5,9 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::rc;
-use std::rc::Rc;
 use crate::engine;
-use crate::obj::{Gd, GdDynMut};
-
-struct Dyn<V> {
-}
+use crate::obj::{bounds, Bounds, Gd, GdDynMut, GodotClass, Inherits};
+use std::marker::PhantomData;
 
 pub struct DynGd<T, D>
 where
@@ -21,8 +17,11 @@ where
     obj: Gd<T>,
     //rc: rc::Weak<B>
     // dyn_ptr: *mut B,
-    erased_downcast: fn(Gd<engine::Object>) -> GdDynMut<T, D>,
+    erased_downcast: ErasedFn<D>,
 }
+
+// type ErasedFn<D> = fn(&Gd<engine::Object>) -> *mut D;
+type ErasedFn<D> = Box<dyn FnMut(&Gd<engine::Object>) -> *mut D>;
 
 impl<T, D> DynGd<T, D>
 where
@@ -30,32 +29,45 @@ where
     D: ?Sized,
 {
     fn dbind_mut(&mut self) -> GdDynMut<T, D> {
-
+        todo!()
     }
-
 }
 
-fn make_fn<T: GodotClass, D: ?Sized>() -> fn(&mut T) -> &mut D {
-    todo!()
+// fn dynamic_cast<T: GodotClass, D: ?Sized>(obj: &mut T) -> &mut D {
+//     todo!()
+// }
+
+fn make_fn<T, D>(
+    _inferred_type: &Gd<T>,
+    _known_type: PhantomData<D>,
+    ref_converter: fn(&mut T) -> &mut D,
+) -> ErasedFn<D>
+where
+    T: GodotClass + Bounds<Declarer = bounds::DeclUser> + Inherits<engine::Object>,
+    D: ?Sized+'static,
+{
+    let dynamic_cast = move |obj: &Gd<engine::Object>| {
+        let mut obj: Gd<T> = obj.clone().cast(); // TODO optimize as unchecked, no-clone downcast
+        let mut guard = obj.bind_mut();
+        let obj = ref_converter(&mut *guard);
+        obj as *mut D
+    };
+
+    Box::new(dynamic_cast)
 }
 
-macro_rules! downcast {
-    () => {};
-}
-
+#[allow(unused_macros)]
 macro_rules! dyn_gd {
-    ($obj:expr) => {{
-        ...
-    }};
-
     ($Trait:ty; $obj:expr) => {{
-        use ::godot::obj::Gd;
         use ::godot::engine::Object;
-        let gd = Gd::from_object($obj);
+        use ::godot::obj::Gd;
+        let obj = Gd::from_object($obj);
 
-        fn downcast<T>(obj: Gd<Object>) -> &$Trait {
-            let concrete: Gd<T> = obj.cast::<T>();
-            concrete.bind()
-        }
+        // fn downcast<T>(obj: Gd<Object>) -> &$Trait {
+        //     let concrete: Gd<T> = obj.cast::<T>();
+        //     concrete.bind()
+        // }
+
+        let downcast = make_fn(&obj, PhantomData::<$Trait>);
     }};
 }
