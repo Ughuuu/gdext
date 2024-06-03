@@ -1,6 +1,6 @@
 [package]
 name = "godot"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 rust-version = "1.78"
 license = "MPL-2.0"
@@ -9,7 +9,7 @@ categories = ["game-engines", "graphics"]
 description = "Rust bindings for Godot 4"
 repository = "https://github.com/godot-rust/gdext"
 homepage = "https://godot-rust.github.io"
-documentation = "https://docs.rs/godot/0.1.0"
+documentation = "https://docs.rs/godot/0.1.1"
 
 [features]
 default = ["codegen-full"]
