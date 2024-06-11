@@ -458,12 +458,6 @@ impl<T: GodotClass> Gd<T> {
     {
         self.raw.script_sys()
     }
-
-    pub(crate) fn with_inc_refcount(self) -> Self {
-        Self {
-            raw: self.raw.with_inc_refcount(),
-        }
-    }
 }
 
 impl<T: GodotClass> Deref for Gd<T> {
