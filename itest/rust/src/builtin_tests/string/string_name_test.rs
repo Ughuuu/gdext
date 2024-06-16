@@ -5,7 +5,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::collections::HashSet;
+use hashbrown::HashSet;
 
 use crate::framework::{assert_eq_self, itest};
 use godot::builtin::{GString, NodePath, StringName};

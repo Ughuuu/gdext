@@ -8,7 +8,7 @@
 use godot::classes::{Engine, Node, Os};
 use godot::obj::Gd;
 use godot::sys;
-use std::collections::HashSet;
+use hashbrown::HashSet;
 
 mod bencher;
 mod runner;
