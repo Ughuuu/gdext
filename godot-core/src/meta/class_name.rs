@@ -6,7 +6,7 @@
  */
 
 use godot_ffi as sys;
-use std::collections::HashMap;
+use hashbrown::HashMap;
 use std::ffi::CStr;
 use std::fmt;
 use std::hash::{Hash, Hasher};

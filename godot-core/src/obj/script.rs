@@ -15,6 +15,7 @@
 // Re-export guards.
 pub use crate::obj::guards::{ScriptBaseMut, ScriptBaseRef};
 
+use hashbrown::HashMap;
 use std::ffi::c_void;
 use std::ops::{Deref, DerefMut};
 

@@ -9,7 +9,7 @@
 //!
 //! Used so we can run miri on this, which we cannot when we are running in itest against Godot.
 
-use std::collections::HashMap;
+use hashbrown::HashMap;
 use std::error::Error;
 use std::marker::PhantomData;
 use std::sync::{atomic::AtomicUsize, Mutex, OnceLock};

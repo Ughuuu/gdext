@@ -19,6 +19,7 @@ use crate::global::godot_error;
 use crate::meta::error::CallError;
 use crate::meta::CallContext;
 use crate::sys;
+use hashbrown::HashMap;
 use std::sync::{atomic, Arc, Mutex};
 use sys::Global;
 
