@@ -225,7 +225,7 @@ impl<T> InitState<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
+    use hashbrown::HashMap;
 
     static MAP: Global<HashMap<i32, &'static str>> = Global::default();
     static VEC: Global<Vec<i32>> = Global::new(|| vec![1, 2, 3]);

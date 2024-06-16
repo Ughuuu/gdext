@@ -436,7 +436,7 @@ fn make_method_table(info: IndexedMethodTable) -> TokenStream {
     quote! {
         #imports
         use crate::StringCache;
-        use std::collections::HashMap;
+        use hashbrown::HashMap;
         use std::cell::RefCell;
 
         // Exists to be stored inside RefCell.
