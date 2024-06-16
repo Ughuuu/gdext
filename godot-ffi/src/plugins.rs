@@ -136,7 +136,7 @@ macro_rules! plugin_foreach {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use hashbrown::HashSet;
     plugin_registry!(V: &'static str);
 
     plugin_add!(V; "three");

@@ -7,7 +7,7 @@
 
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
-use std::collections::{HashMap, HashSet};
+use hashbrown::HashSet;
 
 use crate::util::{KvParser, ListParser};
 use crate::ParseResult;
