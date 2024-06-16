@@ -8,7 +8,7 @@
 use crate::ParseResult;
 use proc_macro2::{Delimiter, Ident, Literal, Spacing, Span, TokenStream, TokenTree};
 use quote::ToTokens;
-use std::collections::HashMap;
+use hashbrown::HashMap;
 
 use super::{bail, error, ident, is_punct, path_is_single, ListParser};
 

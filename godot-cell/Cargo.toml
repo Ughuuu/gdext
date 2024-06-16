@@ -15,6 +15,7 @@ proptest = ["dep:proptest"]
 
 [dependencies]
 proptest = { version = "1.4.0", optional = true }
+hashbrown = "0.14"
 
 # https://docs.rs/about/metadata
 [package.metadata.docs.rs]
