@@ -7,7 +7,7 @@
 
 use crate as sys;
 
-use std::collections::HashMap;
+use hashbrown::HashMap;
 use std::mem::MaybeUninit;
 use std::ptr;
 

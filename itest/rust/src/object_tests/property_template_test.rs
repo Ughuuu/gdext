@@ -10,7 +10,7 @@
 // We're using some weird formatting just for simplicity's sake.
 #![allow(non_snake_case)]
 
-use std::collections::HashMap;
+use hashbrown::HashMap;
 
 use crate::framework::itest;
 use godot::global::PropertyUsageFlags;

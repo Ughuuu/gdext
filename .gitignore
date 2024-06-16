@@ -23,3 +23,5 @@ gen
 *.bat
 config.toml
 exp.rs
+
+.DS_Store
