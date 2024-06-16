@@ -40,6 +40,7 @@ api-4-2-2 = ["godot-bindings/api-4-2-2"]
 # Might however require godot-ffi to depend on godot-macro, which is not ideal...
 [dependencies]
 paste = "1"
+hashbrown = "0.14"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0.2.153"
