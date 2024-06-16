@@ -22,6 +22,7 @@ proc-macro2 = "1.0.63"
 quote = "1.0.29"
 
 venial = "0.6"
+hashbrown = "0.14"
 
 [build-dependencies]
 godot-bindings = { path = "../godot-bindings", version = "=0.1.0" } # emit_godot_version_cfg
