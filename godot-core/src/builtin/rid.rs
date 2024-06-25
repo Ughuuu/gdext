@@ -6,7 +6,6 @@
  */
 
 use std::num::NonZeroU64;
-
 use godot_ffi as sys;
 use sys::{ffi_methods, static_assert, static_assert_eq_size_align, GodotFfi};
 
