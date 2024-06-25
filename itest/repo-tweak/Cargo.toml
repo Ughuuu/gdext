@@ -7,3 +7,6 @@ license = "MPL-2.0"
 publish = false
 
 # Note: this acts as both library and binary.
+
+[dependencies]
+hashbrown = "0.14"

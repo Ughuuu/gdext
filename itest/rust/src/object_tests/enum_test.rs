@@ -10,7 +10,7 @@ use godot::builtin::varray;
 use godot::classes::input::CursorShape;
 use godot::classes::mesh::PrimitiveType;
 use godot::classes::{time, ArrayMesh};
-use std::collections::HashSet;
+use hashbrown::HashSet;
 
 #[itest]
 fn enum_ords_correct() {
