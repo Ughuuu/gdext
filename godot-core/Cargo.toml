@@ -49,6 +49,7 @@ godot-ffi = { path = "../godot-ffi", version = "=0.1.1" }
 glam = { version = "0.27", features = ["debug-glam-assert"] }
 serde = { version = "1", features = ["derive"], optional = true }
 godot-cell = { path = "../godot-cell", version = "=0.1.1" }
+hashbrown = "0.14"
 
 [build-dependencies]
 godot-bindings = { path = "../godot-bindings", version = "=0.1.1" }

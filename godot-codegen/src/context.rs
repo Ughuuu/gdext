@@ -15,7 +15,7 @@ use crate::util::option_as_slice;
 use crate::{special_cases, util, JsonExtensionApi};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, ToTokens};
-use std::collections::{HashMap, HashSet};
+use hashbrown::{HashMap, HashSet};
 
 #[derive(Default)]
 pub struct Context<'a> {

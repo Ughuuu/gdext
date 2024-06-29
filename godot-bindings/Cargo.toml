@@ -46,6 +46,7 @@ bindgen = { optional = true, version = "0.68", default-features = false, feature
 # 'unicode-gencat' needed for \d, see: https://docs.rs/regex/1.5.5/regex/#unicode-features
 regex = { optional = true, version = "1.5.5", default-features = false, features = ["std", "unicode-gencat"] }
 which = { optional = true, version = "6" }
+hashbrown = "0.14"
 
 [dev-dependencies]
 # For tests, we need regex unconditionally. Keep this in sync with above dependency.

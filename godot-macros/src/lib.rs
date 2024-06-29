@@ -85,7 +85,7 @@ use crate::util::ident;
 ///
 /// ```
 /// # use godot_macros::GodotClass;
-/// # use std::collections::HashMap;
+/// # use hashbrown::HashMap;
 /// # #[derive(GodotClass)]
 /// # #[class(init)]
 /// # struct MyStruct {

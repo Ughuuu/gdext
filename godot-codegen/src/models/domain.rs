@@ -17,7 +17,7 @@ use crate::util::{ident, option_as_slice, safe_ident};
 
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::{format_ident, quote, ToTokens};
-use std::collections::HashMap;
+use hashbrown::HashMap;
 use std::fmt;
 
 mod enums;

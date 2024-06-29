@@ -5,7 +5,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::collections::HashMap;
+use hashbrown::HashMap;
 use std::ptr;
 
 use crate::init::InitLevel;
