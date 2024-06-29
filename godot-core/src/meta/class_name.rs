@@ -88,13 +88,13 @@ impl ClassName {
 
     // Takes a closure because the mutex guard protects the reference; so the &StringName cannot leave the scope.
     fn with_string_name<R>(&self, func: impl FnOnce(&StringName) -> R) -> R {
-        let mut map = CACHED_STRING_NAMES.lock();
+        //let mut map = CACHED_STRING_NAMES.lock();
 
-        let value = map
-            .entry(*self)
-            .or_insert_with(|| Box::new(self.load_string_name()));
-
-        func(value)
+        //let value = map
+        //    .entry(*self)
+        //    .or_insert_with(|| Box::new(self.load_string_name()));
+        let value = self.load_string_name();
+        func(&value)
     }
 
     fn load_string_name(&self) -> StringName {
