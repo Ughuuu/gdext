@@ -15,6 +15,7 @@ documentation = "https://docs.rs/godot/0.1.1"
 [features]
 custom-godot = ["api-custom"]
 double-precision = ["godot-core/double-precision"]
+enchanced-determinism = ["godot-core/enchanced-determinism"]
 experimental-godot-api = ["godot-core/experimental-godot-api"]
 experimental-threads = ["godot-core/experimental-threads"]
 experimental-wasm = []
