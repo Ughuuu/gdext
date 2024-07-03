@@ -57,8 +57,8 @@ macro_rules! out {
 #[macro_export]
 macro_rules! out {
     ()                          => ({});
-    ($fmt:literal)              => ({ use std::io::{sink, Write}; let _ = write!(sink(), $fmt); });
-    ($fmt:literal, $($arg:tt)*) => ({ use std::io::{sink, Write}; let _ = write!(sink(), $fmt, $($arg)*); };)
+    ($fmt:literal)              => ({});
+    ($fmt:literal, $($arg:tt)*) => ({});
 }
 
 /// Extract a function pointer from its `Option` and convert it to the (dereferenced) target type.
