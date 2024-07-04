@@ -260,12 +260,12 @@ impl<T: ArrayElement> Array<T> {
     /// # Panics
     ///
     /// If `index` is out of bounds.
-    pub fn set(&mut self, index: usize, value: T) {
+    pub fn set(&mut self, index: usize, value: Variant) {
         let ptr_mut = self.ptr_mut(index);
 
         // SAFETY: `ptr_mut` just checked that the index is not out of bounds.
         unsafe {
-            value.to_variant().move_into_var_ptr(ptr_mut);
+            value.move_into_var_ptr(ptr_mut);
         }
     }
 
@@ -371,7 +371,7 @@ impl<T: ArrayElement> Array<T> {
     /// then the new elements are set to `value`.
     ///
     /// If you know that the new size is smaller, then consider using [`shrink`](Array::shrink) instead.
-    pub fn resize(&mut self, new_size: usize, value: &T) {
+    pub fn resize(&mut self, new_size: usize, value: &Variant) {
         let original_size = self.len();
 
         // SAFETY: While we do insert `Variant::nil()` if the new size is larger, we then fill it with `value` ensuring that all values in the
