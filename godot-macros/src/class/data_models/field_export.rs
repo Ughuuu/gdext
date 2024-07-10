@@ -8,6 +8,7 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 use hashbrown::HashSet;
+use hashbrown::HashMap;
 
 use crate::util::{KvParser, ListParser};
 use crate::ParseResult;
