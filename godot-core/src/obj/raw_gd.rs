@@ -44,6 +44,43 @@ impl<T: GodotClass> RawGd<T> {
             cached_binding: None,
         }
     }
+    /// Initializes this `RawGd<T>` from the object pointer as a **weak ref**, meaning it does not
+    /// initialize/increment the reference counter.
+    ///
+    /// # Safety
+    ///
+    /// `obj` must be a valid object pointer or a null pointer.
+    pub(super) unsafe fn from_obj_sys_and_binding_weak(obj: sys::GDExtensionObjectPtr, binding: Option<sys::GDExtensionClassInstancePtr>) -> Self {
+        let rtti = if obj.is_null() {
+            None
+        } else {
+            let raw_id = unsafe { interface_fn!(object_get_instance_id)(obj) };
+
+            let instance_id = InstanceId::try_from_u64(raw_id)
+                .expect("constructed RawGd weak pointer with instance ID 0");
+
+            // TODO(bromeon): this should query dynamic type of object, which can be different from T (upcast, FromGodot, etc).
+            // See comment in ObjectRtti.
+            Some(ObjectRtti::of::<T>(instance_id))
+        };
+        if binding.is_some() {
+            Self {
+                obj: obj.cast::<T>(),
+                cached_rtti: rtti,
+                cached_binding: binding,
+            }
+        } else {
+            let callbacks = crate::storage::nop_instance_callbacks();
+            let token = sys::get_library() as *mut std::ffi::c_void;
+            let binding = interface_fn!(object_get_instance_binding)(obj as sys::GDExtensionObjectPtr, token, &callbacks);
+    
+            Self {
+                obj: obj.cast::<T>(),
+                cached_rtti: rtti,
+                cached_binding: Some(binding as sys::GDExtensionClassInstancePtr),
+            }
+        }
+    }
 
     /// Initializes this `RawGd<T>` from the object pointer as a **weak ref**, meaning it does not
     /// initialize/increment the reference counter.
@@ -541,6 +578,88 @@ impl<T: GodotClass> ToGodot for RawGd<T> {
 impl<T: GodotClass> FromGodot for RawGd<T> {
     fn try_from_godot(via: Self::Via) -> Result<Self, ConvertError> {
         Ok(via)
+    }
+}
+
+impl<T: GodotClass> GodotNullableFfi for RawGd<T> {
+    fn flatten_option(opt: Option<Self>) -> Self {
+        opt.unwrap_or_else(|| Self::null())
+    }
+
+    fn is_null(&self) -> bool {
+        Self::is_null(self)
+    }
+}
+
+/// Runs `init_fn` on the address of a pointer (initialized to null), then returns that pointer, possibly still null.
+///
+/// # Safety
+/// `init_fn` must be a function that correctly handles a _type pointer_ pointing to an _object pointer_.
+#[doc(hidden)]
+pub unsafe fn raw_object_init(
+    init_fn: impl FnOnce(sys::GDExtensionUninitializedTypePtr),
+) -> sys::GDExtensionObjectPtr {
+    // return_ptr has type GDExtensionTypePtr = GDExtensionObjectPtr* = OpaqueObject* = Object**
+    // (in other words, the type-ptr contains the _address_ of an object-ptr).
+    let mut object_ptr: sys::GDExtensionObjectPtr = ptr::null_mut();
+    let return_ptr: *mut sys::GDExtensionObjectPtr = ptr::addr_of_mut!(object_ptr);
+
+    init_fn(return_ptr as sys::GDExtensionUninitializedTypePtr);
+
+    // We don't need to know if Object** is null, but if Object* is null; return_ptr has the address of a local (never null).
+    object_ptr
+}
+
+/// Destructor with semantics depending on memory strategy.
+///
+/// * If this `RawGd` smart pointer holds a reference-counted type, this will decrement the reference counter.
+///   If this was the last remaining reference, dropping it will invoke `T`'s destructor.
+///
+/// * If the held object is manually-managed, **nothing happens**.
+///   To destroy manually-managed `RawGd` pointers, you need to call [`crate::obj::Gd::free()`].
+impl<T: GodotClass> Drop for RawGd<T> {
+    fn drop(&mut self) {
+        // No-op for manually managed objects
+
+        // out!("RawGd::drop   <{}>", std::any::type_name::<T>());
+
+        // SAFETY: This `Gd` wont be dropped again after this.
+        let is_last = unsafe { T::DynMemory::maybe_dec_ref(self) }; // may drop
+        if is_last {
+            unsafe {
+                interface_fn!(object_destroy)(self.obj_sys());
+            }
+        }
+
+        /*let st = self.storage();
+        out!("    objd;  self={:?}, val={:?}", st as *mut _, st.lifecycle);
+        //out!("    objd2; self={:?}, val={:?}", st as *mut _, st.lifecycle);
+
+        // If destruction is triggered by Godot, Storage already knows about it, no need to notify it
+        if !self.storage().destroyed_by_godot() {
+            let is_last = T::DynMemory::maybe_dec_ref(&self); // may drop
+            if is_last {
+                //T::Declarer::destroy(self);
+                unsafe {
+                    interface_fn!(object_destroy)(self.obj_sys());
+                }
+            }
+        }*/
+    }
+}
+
+impl<T: GodotClass> Clone for RawGd<T> {
+    fn clone(&self) -> Self {
+        out!("RawGd::clone");
+        if !self.is_null() {
+            self.check_rtti("clone");
+        }
+
+        if !self.is_null() {
+            unsafe { Self::from_obj_sys_and_binding_weak(self.obj as sys::GDExtensionObjectPtr, self.cached_binding) }
+        } else {
+            Self::null()
+        }
     }
 }
 
