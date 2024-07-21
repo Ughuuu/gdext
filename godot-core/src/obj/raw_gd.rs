@@ -751,3 +751,22 @@ pub(super) fn object_as_arg_ptr<F>(_object_ptr_field: &*mut F) -> sys::GDExtensi
     // Since 4.1, argument pointers were standardized to always be `T**`.
     ptr::addr_of!(*_object_ptr_field) as sys::GDExtensionConstTypePtr
 }
+
+/// Runs `init_fn` on the address of a pointer (initialized to null), then returns that pointer, possibly still null.
+///
+/// # Safety
+/// `init_fn` must be a function that correctly handles a _type pointer_ pointing to an _object pointer_.
+#[doc(hidden)]
+pub unsafe fn raw_object_init(
+    init_fn: impl FnOnce(sys::GDExtensionUninitializedTypePtr),
+) -> sys::GDExtensionObjectPtr {
+    // return_ptr has type GDExtensionTypePtr = GDExtensionObjectPtr* = OpaqueObject* = Object**
+    // (in other words, the type-ptr contains the _address_ of an object-ptr).
+    let mut object_ptr: sys::GDExtensionObjectPtr = ptr::null_mut();
+    let return_ptr: *mut sys::GDExtensionObjectPtr = ptr::addr_of_mut!(object_ptr);
+
+    init_fn(return_ptr as sys::GDExtensionUninitializedTypePtr);
+
+    // We don't need to know if Object** is null, but if Object* is null; return_ptr has the address of a local (never null).
+    object_ptr
+}
