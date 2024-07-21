@@ -7,7 +7,7 @@
 
 use std::{fmt, ptr};
 
-use godot_ffi as sys;
+use godot_ffi::{self as sys};
 use sys::{interface_fn, GodotFfi, GodotNullableFfi, PtrcallType};
 
 use crate::builtin::Variant;
@@ -21,6 +21,7 @@ use crate::obj::{bounds, Bounds, GdDerefTarget, GdMut, GdRef, GodotClass, Instan
 use crate::storage::{InstanceStorage, Storage};
 use crate::{classes, global, out};
 
+
 /// Low-level bindings for object pointers in Godot.
 ///
 /// This should not be used directly, you should either use [`Gd<T>`](super::Gd) or [`Option<Gd<T>>`]
@@ -31,6 +32,7 @@ pub struct RawGd<T: GodotClass> {
     pub(super) obj: *mut T,
     // Must not be changed after initialization.
     cached_rtti: Option<ObjectRtti>,
+    cached_binding: Option<sys::GDExtensionClassInstancePtr>,
 }
 
 impl<T: GodotClass> RawGd<T> {
@@ -39,6 +41,7 @@ impl<T: GodotClass> RawGd<T> {
         Self {
             obj: ptr::null_mut(),
             cached_rtti: None,
+            cached_binding: None,
         }
     }
 
@@ -61,10 +64,14 @@ impl<T: GodotClass> RawGd<T> {
             // See comment in ObjectRtti.
             Some(ObjectRtti::of::<T>(instance_id))
         };
+        let callbacks = crate::storage::nop_instance_callbacks();
+        let token = sys::get_library() as *mut std::ffi::c_void;
+        let binding = interface_fn!(object_get_instance_binding)(obj as sys::GDExtensionObjectPtr, token, &callbacks);
 
         Self {
             obj: obj.cast::<T>(),
             cached_rtti: rtti,
+            cached_binding: Some(binding as sys::GDExtensionClassInstancePtr),
         }
     }
 
@@ -421,6 +428,9 @@ where
     unsafe fn resolve_instance_ptr(&self) -> sys::GDExtensionClassInstancePtr {
         if self.is_null() {
             return ptr::null_mut();
+        }
+        if let Some(cached_binding) = self.cached_binding {
+            return cached_binding;
         }
 
         let callbacks = crate::storage::nop_instance_callbacks();
