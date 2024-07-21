@@ -581,16 +581,6 @@ impl<T: GodotClass> FromGodot for RawGd<T> {
     }
 }
 
-impl<T: GodotClass> GodotNullableFfi for RawGd<T> {
-    fn flatten_option(opt: Option<Self>) -> Self {
-        opt.unwrap_or_else(|| Self::null())
-    }
-
-    fn is_null(&self) -> bool {
-        Self::is_null(self)
-    }
-}
-
 /// Runs `init_fn` on the address of a pointer (initialized to null), then returns that pointer, possibly still null.
 ///
 /// # Safety
@@ -608,59 +598,6 @@ pub unsafe fn raw_object_init(
 
     // We don't need to know if Object** is null, but if Object* is null; return_ptr has the address of a local (never null).
     object_ptr
-}
-
-/// Destructor with semantics depending on memory strategy.
-///
-/// * If this `RawGd` smart pointer holds a reference-counted type, this will decrement the reference counter.
-///   If this was the last remaining reference, dropping it will invoke `T`'s destructor.
-///
-/// * If the held object is manually-managed, **nothing happens**.
-///   To destroy manually-managed `RawGd` pointers, you need to call [`crate::obj::Gd::free()`].
-impl<T: GodotClass> Drop for RawGd<T> {
-    fn drop(&mut self) {
-        // No-op for manually managed objects
-
-        // out!("RawGd::drop   <{}>", std::any::type_name::<T>());
-
-        // SAFETY: This `Gd` wont be dropped again after this.
-        let is_last = unsafe { T::DynMemory::maybe_dec_ref(self) }; // may drop
-        if is_last {
-            unsafe {
-                interface_fn!(object_destroy)(self.obj_sys());
-            }
-        }
-
-        /*let st = self.storage();
-        out!("    objd;  self={:?}, val={:?}", st as *mut _, st.lifecycle);
-        //out!("    objd2; self={:?}, val={:?}", st as *mut _, st.lifecycle);
-
-        // If destruction is triggered by Godot, Storage already knows about it, no need to notify it
-        if !self.storage().destroyed_by_godot() {
-            let is_last = T::DynMemory::maybe_dec_ref(&self); // may drop
-            if is_last {
-                //T::Declarer::destroy(self);
-                unsafe {
-                    interface_fn!(object_destroy)(self.obj_sys());
-                }
-            }
-        }*/
-    }
-}
-
-impl<T: GodotClass> Clone for RawGd<T> {
-    fn clone(&self) -> Self {
-        out!("RawGd::clone");
-        if !self.is_null() {
-            self.check_rtti("clone");
-        }
-
-        if !self.is_null() {
-            unsafe { Self::from_obj_sys_and_binding_weak(self.obj as sys::GDExtensionObjectPtr, self.cached_binding) }
-        } else {
-            Self::null()
-        }
-    }
 }
 
 impl<T: GodotClass> GodotType for RawGd<T> {
@@ -757,7 +694,7 @@ impl<T: GodotClass> Clone for RawGd<T> {
             Self::null()
         } else {
             self.check_rtti("clone");
-            unsafe { Self::from_obj_sys(self.obj as sys::GDExtensionObjectPtr) }
+            unsafe { Self::from_obj_sys_and_binding_weak(self.obj as sys::GDExtensionObjectPtr, self.cached_binding) }
         }
     }
 }
