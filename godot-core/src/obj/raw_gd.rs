@@ -125,6 +125,19 @@ impl<T: GodotClass> RawGd<T> {
         Self::from_obj_sys_weak(obj).with_inc_refcount()
     }
 
+    /// Initializes this `RawGd<T>` from the object pointer as a **strong ref**, meaning it initializes
+    /// /increments the reference counter and keeps the object alive.
+    ///
+    /// This is the default for most initializations from FFI. In cases where reference counter
+    /// should explicitly **not** be updated, [`from_obj_sys_weak()`](Self::from_obj_sys_weak) is available.
+    ///
+    /// # Safety
+    ///
+    /// `obj` must be a valid object pointer or a null pointer.
+    pub(super) unsafe fn from_obj_sys_and_binding(obj: sys::GDExtensionObjectPtr, binding: Option<sys::GDExtensionClassInstancePtr>) -> Self {
+        Self::from_obj_sys_and_binding_weak(obj, binding).with_inc_refcount()
+    }
+
     /// Returns `self` but with initialized ref-count.
     fn with_inc_refcount(mut self) -> Self {
         // Note: use init_ref and not inc_ref, since this might be the first reference increment.
@@ -675,7 +688,7 @@ impl<T: GodotClass> Clone for RawGd<T> {
             Self::null()
         } else {
             self.check_rtti("clone");
-            unsafe { Self::from_obj_sys_and_binding_weak(self.obj as sys::GDExtensionObjectPtr, self.cached_binding) }
+            unsafe { Self::from_obj_sys_and_binding(self.obj as sys::GDExtensionObjectPtr, self.cached_binding) }
         }
     }
 }
