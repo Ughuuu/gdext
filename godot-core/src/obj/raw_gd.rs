@@ -770,3 +770,50 @@ pub unsafe fn raw_object_init(
     // We don't need to know if Object** is null, but if Object* is null; return_ptr has the address of a local (never null).
     object_ptr
 }
+
+pub(super) fn object_ffi_to_variant<T: GodotFfi>(self_: &T) -> Variant {
+    // The conversion method `object_to_variant` DOES increment the reference-count of the object; so nothing to do here.
+    // (This behaves differently in the opposite direction `variant_to_object`.)
+
+    unsafe {
+        Variant::new_with_var_uninit(|variant_ptr| {
+            let converter = sys::builtin_fn!(object_to_variant);
+
+            // Note: this is a special case because of an inconsistency in Godot, where sometimes the equivalency is
+            // GDExtensionTypePtr == Object** and sometimes GDExtensionTypePtr == Object*. Here, it is the former, thus extra pointer.
+            // Reported at https://github.com/godotengine/godot/issues/61967
+            let type_ptr = self_.sys();
+            converter(
+                variant_ptr,
+                ptr::addr_of!(type_ptr) as sys::GDExtensionTypePtr,
+            );
+        })
+    }
+}
+
+pub(super) fn object_as_arg_ptr<T: GodotFfi, F>(
+    _self: &T,
+    _object_ptr_field: &*mut F,
+) -> sys::GDExtensionConstTypePtr {
+    // Be careful when refactoring this code. Address of field pointer matters, copying it into a local variable will create use-after-free.
+
+    // No need to call self.check_rtti("as_arg_ptr") here, since this is already done in ToGodot impl.
+
+    // We pass an object to a Godot API. If the reference count needs to be incremented, then the callee (Godot C++ function) will do so.
+    // We do not need to prematurely do so. In Rust terms, if `T` is ref-counted, then we are effectively passing a `&Arc<T>`, and the
+    // callee would need to invoke `.clone()` if desired.
+
+    // In 4.0, argument pointers are passed to godot as `T*`, except for in virtual method calls. We can't perform virtual method calls
+    // currently, so they are always `T*`.
+    //
+    // In 4.1, argument pointers were standardized to always be `T**`.
+    #[cfg(before_api = "4.1")]
+    {
+        _self.sys()
+    }
+
+    #[cfg(since_api = "4.1")]
+    {
+        ptr::addr_of!(*_object_ptr_field) as sys::GDExtensionConstTypePtr
+    }
+}
