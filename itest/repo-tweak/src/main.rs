@@ -9,7 +9,7 @@
 // May require unlinking this crate from top-level workspace Cargo.toml, so that broken Cargo.toml can be
 // overridden. It can help to call `cargo run -p repo-tweak` directly from this crate's directory.
 
-use hashbrown::HashMap;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
