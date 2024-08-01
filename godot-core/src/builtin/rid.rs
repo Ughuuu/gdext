@@ -36,6 +36,7 @@ use sys::{ffi_methods, static_assert, static_assert_eq_size_align, GodotFfi};
 // See: https://doc.rust-lang.org/nomicon/ffi.html#the-nullable-pointer-optimization
 // Cannot use `#[repr(C)]` as it does not use the nullable pointer optimization.
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Rid {
     /// A valid RID may refer to some resource, but is not guaranteed to do so.
     Valid(NonZeroU64),
