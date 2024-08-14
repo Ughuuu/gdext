@@ -335,6 +335,7 @@ where
     let prev_hook = std::panic::take_hook();
     {
         let info = info.clone();
+        /*
         std::panic::set_hook(Box::new(move |panic_info| {
             if let Some(location) = panic_info.location() {
                 *info.lock().unwrap() = Some(GodotPanicInfo {
@@ -346,11 +347,12 @@ where
                 eprintln!("panic occurred, but can't get location information");
             }
         }));
+         */
     }
 
     // Run code that should panic, restore hook
     let panic = std::panic::catch_unwind(code);
-    std::panic::set_hook(prev_hook);
+    //std::panic::set_hook(prev_hook);
 
     match panic {
         Ok(result) => Ok(result),
