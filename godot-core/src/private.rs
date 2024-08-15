@@ -351,9 +351,10 @@ where
     }
 
     // Run code that should panic, restore hook
-    let panic = std::panic::catch_unwind(code);
+    return Ok(code());
+    //let panic = std::panic::catch_unwind(code);
     //std::panic::set_hook(prev_hook);
-
+    /*
     match panic {
         Ok(result) => Ok(result),
         Err(err) => {
@@ -383,7 +384,7 @@ where
 
             Err(msg)
         }
-    }
+    }*/
 }
 
 // ----------------------------------------------------------------------------------------------------------------------------------------------
