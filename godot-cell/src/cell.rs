@@ -5,7 +5,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-use std::cell::UnsafeCell;
+use std::borrow::BorrowMut;
+use std::cell::{RefCell, UnsafeCell};
 use std::error::Error;
 use std::marker::PhantomPinned;
 use std::pin::Pin;
@@ -77,7 +78,7 @@ impl<T> GdCell<T> {
 #[derive(Debug)]
 pub(crate) struct GdCellInner<T> {
     /// The mutable state of this cell.
-    pub(crate) state: Mutex<CellState<T>>,
+    pub(crate) state: RefCell<CellState<T>>,
     /// The actual value we're handing out references to, uses `UnsafeCell` as we're passing out `&mut`
     /// references to its contents even when we only have a `&` reference to the cell.
     value: UnsafeCell<T>,
@@ -89,12 +90,12 @@ impl<T> GdCellInner<T> {
     /// Creates a new cell storing `value`.
     pub fn new(value: T) -> Pin<Box<Self>> {
         let cell = Box::pin(Self {
-            state: Mutex::new(CellState::new()),
+            state: RefCell::new(CellState::new()),
             value: UnsafeCell::new(value),
             _pin: PhantomPinned,
         });
 
-        cell.state.lock().unwrap().initialize_ptr(&cell.value);
+        cell.state.borrow_mut().initialize_ptr(&cell.value);
 
         cell
     }
@@ -103,7 +104,7 @@ impl<T> GdCellInner<T> {
     ///
     /// Fails if an accessible mutable reference exists.
     pub fn borrow(self: Pin<&Self>) -> Result<RefGuard<'_, T>, Box<dyn Error>> {
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.borrow_mut();
         state.borrow_state.increment_shared()?;
 
         // SAFETY: `increment_shared` succeeded, therefore there cannot currently be any accessible mutable
@@ -115,7 +116,7 @@ impl<T> GdCellInner<T> {
     ///
     /// Fails if an accessible mutable reference exists, or a shared reference exists.
     pub fn borrow_mut(self: Pin<&Self>) -> Result<MutGuard<'_, T>, Box<dyn Error>> {
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.borrow_mut();
         state.borrow_state.increment_mut()?;
         let count = state.borrow_state.mut_count();
         let value = state.get_ptr();
@@ -157,14 +158,14 @@ impl<T> GdCellInner<T> {
     /// cell hands out a new borrow before it is destroyed. So we still need to ensure that this cannot
     /// happen at the same time.
     pub fn is_currently_bound(self: Pin<&Self>) -> bool {
-        let state = self.state.lock().unwrap();
+        let state = self.state.borrow();
 
         state.borrow_state.shared_count() > 0 || state.borrow_state.mut_count() > 0
     }
 
     /// Similar to [`Self::is_currently_bound`] but only counts mutable references and ignores shared references.
     pub(crate) fn is_currently_mutably_bound(self: Pin<&Self>) -> bool {
-        let state = self.state.lock().unwrap();
+        let state = self.state.borrow();
 
         state.borrow_state.mut_count() > 0
     }
