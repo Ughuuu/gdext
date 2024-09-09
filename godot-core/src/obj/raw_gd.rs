@@ -5,9 +5,8 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
- use std::cell::Cell;
  use std::{fmt, ptr};
- 
+
  use godot_ffi as sys;
  use sys::{interface_fn, GodotFfi, GodotNullableFfi, PtrcallType};
  
@@ -30,12 +29,8 @@
  #[doc(hidden)]
  pub struct RawGd<T: GodotClass> {
      pub(super) obj: *mut T,
- 
      // Must not be changed after initialization.
      cached_rtti: Option<ObjectRtti>,
- 
-     // Initially null, may also be invalid. Access to InstanceStorage.
-     cached_storage_ptr: Cell<sys::GDExtensionClassInstancePtr>,
  }
  
  impl<T: GodotClass> RawGd<T> {
@@ -44,7 +39,6 @@
          Self {
              obj: ptr::null_mut(),
              cached_rtti: None,
-             cached_storage_ptr: Cell::new(ptr::null_mut()),
          }
      }
  
@@ -71,7 +65,6 @@
          Self {
              obj: obj.cast::<T>(),
              cached_rtti: rtti,
-             cached_storage_ptr: Cell::new(ptr::null_mut()),
          }
      }
  
@@ -143,8 +136,8 @@
      where
          U: GodotClass,
      {
-         // Workaround for bug in Godot 4.0 that makes casts always succeed (https://github.com/godot-rust/gdext/issues/158).
-         // TODO once fixed in Godot, use #[cfg(before_api = "4.1")]
+         // Workaround for bug in Godot that makes casts always succeed (https://github.com/godot-rust/gdext/issues/158).
+         // TODO once fixed in Godot, remove this.
          if !self.is_cast_valid::<U>() {
              return Err(self);
          }
@@ -430,11 +423,6 @@
              return ptr::null_mut();
          }
  
-         let cached = self.cached_storage_ptr.get();
-         if !cached.is_null() {
-             return cached;
-         }
- 
          let callbacks = crate::storage::nop_instance_callbacks();
          let token = sys::get_library() as *mut std::ffi::c_void;
          let binding = interface_fn!(object_get_instance_binding)(self.obj_sys(), token, &callbacks);
@@ -444,10 +432,7 @@
              "Class {} -- null instance; does the class have a Godot creator function?",
              std::any::type_name::<T>()
          );
- 
-         let ptr = binding as sys::GDExtensionClassInstancePtr;
-         self.cached_storage_ptr.set(ptr);
-         ptr
+         binding as sys::GDExtensionClassInstancePtr
      }
  }
  
@@ -463,6 +448,8 @@
  where
      T: GodotClass,
  {
+     // If anything changes here, keep in sync with ObjectArg impl.
+ 
      fn variant_type() -> sys::VariantType {
          sys::VariantType::OBJECT
      }
@@ -493,25 +480,9 @@
      // https://github.com/godotengine/godot-cpp/issues/954
  
      fn as_arg_ptr(&self) -> sys::GDExtensionConstTypePtr {
-         // No need to call self.check_rtti("as_arg_ptr") here, since this is already done in ToGodot impl.
+         // Even though ObjectArg exists, this function is still relevant, e.g. in Callable.
  
-         // We pass an object to a Godot API. If the reference count needs to be incremented, then the callee (Godot C++ function) will do so.
-         // We do not need to prematurely do so. In Rust terms, if `T` is ref-counted, then we are effectively passing a `&Arc<T>`, and the
-         // callee would need to invoke `.clone()` if desired.
- 
-         // In 4.0, argument pointers are passed to godot as `T*`, except for in virtual method calls. We can't perform virtual method calls
-         // currently, so they are always `T*`.
-         //
-         // In 4.1, argument pointers were standardized to always be `T**`.
-         #[cfg(before_api = "4.1")]
-         {
-             self.sys()
-         }
- 
-         #[cfg(since_api = "4.1")]
-         {
-             ptr::addr_of!(self.obj) as sys::GDExtensionConstTypePtr
-         }
+         object_as_arg_ptr(&self.obj)
      }
  
      unsafe fn from_arg_ptr(ptr: sys::GDExtensionTypePtr, call_type: PtrcallType) -> Self {
@@ -523,12 +494,9 @@
              // ptr is `Ref<T>*`
              // See the docs for `PtrcallType::Virtual` for more info on `Ref<T>`.
              interface_fn!(ref_get_object)(ptr as sys::GDExtensionRefPtr)
-         } else if cfg!(since_api = "4.1") || matches!(call_type, PtrcallType::Virtual) {
-             // ptr is `T**`
-             *(ptr as *mut sys::GDExtensionObjectPtr)
          } else {
-             // ptr is `T*`
-             ptr as sys::GDExtensionObjectPtr
+             // ptr is `T**` from Godot 4.1 onwards, also in virtual functions.
+             *(ptr as *mut sys::GDExtensionObjectPtr)
          };
  
          // obj_ptr is `T*`
@@ -592,23 +560,7 @@
  
  impl<T: GodotClass> GodotFfiVariant for RawGd<T> {
      fn ffi_to_variant(&self) -> Variant {
-         // The conversion method `object_to_variant` DOES increment the reference-count of the object; so nothing to do here.
-         // (This behaves differently in the opposite direction `variant_to_object`.)
- 
-         unsafe {
-             Variant::new_with_var_uninit(|variant_ptr| {
-                 let converter = sys::builtin_fn!(object_to_variant);
- 
-                 // Note: this is a special case because of an inconsistency in Godot, where sometimes the equivalency is
-                 // GDExtensionTypePtr == Object** and sometimes GDExtensionTypePtr == Object*. Here, it is the former, thus extra pointer.
-                 // Reported at https://github.com/godotengine/godot/issues/61967
-                 let type_ptr = self.sys();
-                 converter(
-                     variant_ptr,
-                     ptr::addr_of!(type_ptr) as sys::GDExtensionTypePtr,
-                 );
-             })
-         }
+         object_ffi_to_variant(self)
      }
  
      fn ffi_from_variant(variant: &Variant) -> Result<Self, ConvertError> {
@@ -676,14 +628,7 @@
              Self::null()
          } else {
              self.check_rtti("clone");
- 
-             // Create new object, adopt cached fields.
-             let copy = Self {
-                 obj: self.obj,
-                 cached_rtti: self.cached_rtti.clone(),
-                 cached_storage_ptr: self.cached_storage_ptr.clone(),
-             };
-             copy.with_inc_refcount()
+             unsafe { Self::from_obj_sys(self.obj as sys::GDExtensionObjectPtr) }
          }
      }
  }
@@ -698,6 +643,9 @@
          write!(f, "{gd:?}")
      }
  }
+ 
+ // ----------------------------------------------------------------------------------------------------------------------------------------------
+ // Reusable functions, also shared with Gd, Variant, ObjectArg.
  
  /// Runs `init_fn` on the address of a pointer (initialized to null), then returns that pointer, possibly still null.
  ///
@@ -717,37 +665,36 @@
      // We don't need to know if Object** is null, but if Object* is null; return_ptr has the address of a local (never null).
      object_ptr
  }
-
-
-pub(super) fn object_ffi_to_variant<T: GodotFfi>(self_: &T) -> Variant {
-    // The conversion method `object_to_variant` DOES increment the reference-count of the object; so nothing to do here.
-    // (This behaves differently in the opposite direction `variant_to_object`.)
-
-    unsafe {
-        Variant::new_with_var_uninit(|variant_ptr| {
-            let converter = sys::builtin_fn!(object_to_variant);
-
-            // Note: this is a special case because of an inconsistency in Godot, where sometimes the equivalency is
-            // GDExtensionTypePtr == Object** and sometimes GDExtensionTypePtr == Object*. Here, it is the former, thus extra pointer.
-            // Reported at https://github.com/godotengine/godot/issues/61967
-            let type_ptr = self_.sys();
-            converter(
-                variant_ptr,
-                ptr::addr_of!(type_ptr) as sys::GDExtensionTypePtr,
-            );
-        })
-    }
-}
-
-pub(super) fn object_as_arg_ptr<F>(_object_ptr_field: &*mut F) -> sys::GDExtensionConstTypePtr {
-    // Be careful when refactoring this code. Address of field pointer matters, copying it into a local variable will create use-after-free.
-
-    // No need to call self.check_rtti("as_arg_ptr") here, since this is already done in ToGodot impl.
-
-    // We pass an object to a Godot API. If the reference count needs to be incremented, then the callee (Godot C++ function) will do so.
-    // We do not need to prematurely do so. In Rust terms, if `T` is ref-counted, then we are effectively passing a `&Arc<T>`, and the
-    // callee would need to invoke `.clone()` if desired.
-
-    // Since 4.1, argument pointers were standardized to always be `T**`.
-    ptr::addr_of!(*_object_ptr_field) as sys::GDExtensionConstTypePtr
-}
+ 
+ pub(super) fn object_ffi_to_variant<T: GodotFfi>(self_: &T) -> Variant {
+     // The conversion method `object_to_variant` DOES increment the reference-count of the object; so nothing to do here.
+     // (This behaves differently in the opposite direction `variant_to_object`.)
+ 
+     unsafe {
+         Variant::new_with_var_uninit(|variant_ptr| {
+             let converter = sys::builtin_fn!(object_to_variant);
+ 
+             // Note: this is a special case because of an inconsistency in Godot, where sometimes the equivalency is
+             // GDExtensionTypePtr == Object** and sometimes GDExtensionTypePtr == Object*. Here, it is the former, thus extra pointer.
+             // Reported at https://github.com/godotengine/godot/issues/61967
+             let type_ptr = self_.sys();
+             converter(
+                 variant_ptr,
+                 ptr::addr_of!(type_ptr) as sys::GDExtensionTypePtr,
+             );
+         })
+     }
+ }
+ 
+ pub(super) fn object_as_arg_ptr<F>(_object_ptr_field: &*mut F) -> sys::GDExtensionConstTypePtr {
+     // Be careful when refactoring this code. Address of field pointer matters, copying it into a local variable will create use-after-free.
+ 
+     // No need to call self.check_rtti("as_arg_ptr") here, since this is already done in ToGodot impl.
+ 
+     // We pass an object to a Godot API. If the reference count needs to be incremented, then the callee (Godot C++ function) will do so.
+     // We do not need to prematurely do so. In Rust terms, if `T` is ref-counted, then we are effectively passing a `&Arc<T>`, and the
+     // callee would need to invoke `.clone()` if desired.
+ 
+     // Since 4.1, argument pointers were standardized to always be `T**`.
+     ptr::addr_of!(*_object_ptr_field) as sys::GDExtensionConstTypePtr
+ }
