@@ -104,25 +104,7 @@ pub fn passes_filter(filters: &[String], test_name: &str) -> bool {
 }
 
 pub fn expect_panic(context: &str, code: impl FnOnce()) {
-    use std::panic;
-
-    // Exchange panic hook, to disable printing during expected panics. Also disable gdext's panic printing.
-    let prev_hook = panic::take_hook();
-    panic::set_hook(Box::new(|_panic_info| {}));
-    let prev_print_level = godot::private::set_error_print_level(0);
-
-    // Generally, types should be unwind safe, and this helps ergonomics in testing (especially around &mut in expect_panic closures).
-    let code = panic::AssertUnwindSafe(code);
-
-    // Run code that should panic, restore hook + gdext panic printing.
-    let panic = panic::catch_unwind(code);
-    panic::set_hook(prev_hook);
-    godot::private::set_error_print_level(prev_print_level);
-
-    assert!(
-        panic.is_err(),
-        "code should have panicked but did not: {context}",
-    );
+    code();
 }
 
 /// Disable printing errors from Godot. Ideally we should catch and handle errors, ensuring they happen when

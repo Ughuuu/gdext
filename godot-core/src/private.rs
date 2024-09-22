@@ -222,7 +222,6 @@ pub fn is_class_runtime(is_tool: bool) -> bool {
 struct GodotPanicInfo {
     line: u32,
     file: String,
-    //backtrace: Backtrace, // for future use
 }
 
 pub fn extract_panic_message(err: Box<dyn std::any::Any + Send>) -> String {
@@ -360,7 +359,6 @@ where
                 *info.lock().unwrap() = Some(GodotPanicInfo {
                     file: location.file().to_string(),
                     line: location.line(),
-                    //backtrace: Backtrace::capture(),
                 });
             } else {
                 eprintln!("panic occurred, but can't get location information");
