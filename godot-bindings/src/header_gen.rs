@@ -27,7 +27,7 @@ pub(crate) fn generate_rust_binding(in_h_path: &Path, out_rs_path: &Path) {
         .header(c_header_path)
         .parse_callbacks(Box::new(cargo_cfg))
         .prepend_enum_name(false)
-        .layout_tests(false);
+        .clang_arg(format!("--target={}", target));
 
     std::fs::create_dir_all(
         out_rs_path
