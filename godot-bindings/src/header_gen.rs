@@ -26,7 +26,9 @@ pub(crate) fn generate_rust_binding(in_h_path: &Path, out_rs_path: &Path) {
     let builder = bindgen::Builder::default()
         .header(c_header_path)
         .parse_callbacks(Box::new(cargo_cfg))
-        .prepend_enum_name(false);
+        .prepend_enum_name(false)
+        // Temporary fix.
+        .blocklist_type("max_align_t");
 
     std::fs::create_dir_all(
         out_rs_path
